@@ -1,5 +1,7 @@
 # Herdr Marks as Unread
 
+![Herdr sidebar showing an unread marker and the Control+B, then M shortcut](assets/mark-as-unread.png)
+
 Keep track of agents you want to revisit. Add a green `▎` to an agent's sidebar
 row, then have it clear automatically when you return to that terminal.
 
