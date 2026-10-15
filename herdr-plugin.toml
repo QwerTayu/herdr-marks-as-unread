@@ -1,0 +1,30 @@
+id = "local.herdr-marks"
+name = "Herdr Marks"
+version = "0.2.2"
+min_herdr_version = "0.9.3"
+description = "Mark agents as unread with a green sidebar marker that clears when viewed"
+platforms = ["macos", "linux"]
+
+[[actions]]
+id = "toggle"
+title = "Toggle agent marker"
+contexts = ["pane"]
+command = ["node", "marks.mjs", "toggle"]
+
+[[actions]]
+id = "setup"
+title = "Set up unread markers and shortcut"
+contexts = ["global"]
+command = ["python3", "install.py", "--configure-only"]
+
+[[events]]
+on = "pane.focused"
+command = ["node", "marks.mjs", "clear-focused"]
+
+[[events]]
+on = "tab.focused"
+command = ["node", "marks.mjs", "clear-focused"]
+
+[[events]]
+on = "workspace.focused"
+command = ["node", "marks.mjs", "clear-focused"]
