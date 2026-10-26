@@ -34,7 +34,7 @@ export function toggle({ env = process.env, target, run } = {}) {
   if (!agent || agent.pane_id !== pane) throw new Error('The target no longer contains that agent.');
   const marked = Boolean(agent.tokens?.[TOKEN]);
   call(['pane', 'report-metadata', pane, '--source', 'plugin:herdr-marks',
-    ...(marked ? ['--clear-token', TOKEN] : ['--token', `${TOKEN}=▎`])]);
+    ...(marked ? ['--clear-token', TOKEN] : ['--token', `${TOKEN}=▌`])]);
   return `${marked ? 'Unmarked' : 'Marked'} ${pane}`;
 }
 
