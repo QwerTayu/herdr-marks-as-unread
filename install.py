@@ -15,28 +15,93 @@ ACTION = 'local.herdr-marks.toggle'
 STYLE = '{ token = "$herdr_mark", fg = "#9ece6a", bold = true, dim = false }'
 
 
+def row_starts(text, start):
+    """Yield offsets just inside each top-level row of the TOML array opening at text[start]."""
+    depth = braces = 0
+    quote = None
+    i = start
+    while i < len(text):
+        c = text[i]
+        if quote:
+            if c == '\\' and quote == '"': i += 1
+            elif c == quote: quote = None
+        elif c in '"\'': quote = c
+        elif c == '#':
+            i = text.find('\n', i)
+            if i == -1: return
+        elif c == '{': braces += 1
+        elif c == '}': braces -= 1
+        elif c == '[':
+            depth += 1
+            if depth == 2 and braces == 0: yield i + 1
+        elif c == ']':
+            depth -= 1
+            if depth == 0: return
+        i += 1
+
+
+def row_items(text, start):
+    """Yield (begin, end) offsets of each top-level item in the array whose '[' precedes text[start]."""
+    depth = braces = 0
+    quote = None
+    i = begin = start
+    while i < len(text):
+        c = text[i]
+        if quote:
+            if c == '\\' and quote == '"': i += 1
+            elif c == quote: quote = None
+        elif c in '"\'': quote = c
+        elif c == '#':
+            i = text.find('\n', i)
+            if i == -1: return
+        elif c == '{': braces += 1
+        elif c == '}': braces -= 1
+        elif c == '[': depth += 1
+        elif c == ']' and depth > 0: depth -= 1
+        elif depth == 0 and braces == 0 and c in ',]':
+            if text[begin:i].strip(): yield begin, i
+            if c == ']': return
+            begin = i + 1
+        i += 1
+
+
 def configure(text):
     data = tomllib.loads(text)
     agents = data.get('ui', {}).get('sidebar', {}).get('agents', {})
-    rows = agents.get('rows', [['state_icon', 'machine', 'workspace', 'tab'], ['agent']])
     token = lambda item: item.get('token') if isinstance(item, dict) else item
-    if not any(token(item) == '$herdr_mark' for row in rows for item in row):
+    rows = agents.get('rows', [])
+    first = rows[0] if rows else []
+    # The marker goes on the first line only: Herdr indents later lines by two extra
+    # columns. It follows state_icon because Herdr joins that pair with a plain space
+    # instead of its usual " · ", so the filled dot sits beside the hollow state icon.
+    default_rows = '[["state_icon", ' + STYLE + ', "machine", "workspace", "tab"], ["agent"]]'
+    if 'rows' in agents and not any(token(item) == '$herdr_mark' for item in first):
         # Insert directly in the existing TOML array, retaining styles and comments.
+        section = re.search(r'(?m)^\[ui\.sidebar\.agents\][ \t]*(?:#.*)?$', text)
+        body_start = section.end() if section else len(text)
+        end = re.search(r'(?m)^\[', text[body_start:])
+        limit = body_start + end.start() if end else len(text)
+        match = re.search(r'(?m)^rows\s*=\s*\[', text[body_start:limit])
+        starts = list(row_starts(text, body_start + match.end() - 1)) if match else []
+        items = list(row_items(text, starts[0])) if starts else []
+        if len(starts) != len(rows) or len(items) != len(first):
+            raise ValueError('Unrecognized agent rows syntax; configure $herdr_mark manually.')
+        icons = [i for i, item in enumerate(first) if token(item) == 'state_icon']
+        if icons:
+            pos = items[icons[0]][1]
+            text = text[:pos] + ', ' + STYLE + text[pos:]
+        else:
+            pos = starts[0]
+            comma = '' if text[pos:].lstrip().startswith(']') else ', '
+            text = text[:pos] + STYLE + comma + text[pos:]
+    elif 'rows' not in agents:
         section = re.search(r'(?m)^\[ui\.sidebar\.agents\][ \t]*(?:#.*)?$', text)
         if section:
             end = re.search(r'(?m)^\[', text[section.end():])
             limit = section.end() + end.start() if end else len(text)
-            body = text[section.end():limit]
-            match = re.search(r'(?m)^rows\s*=\s*\[\s*\[', body)
-            if 'rows' in agents and not match:
-                raise ValueError('Unrecognized agent rows syntax; configure $herdr_mark manually.')
-            if match:
-                pos = section.end() + match.end()
-                text = text[:pos] + STYLE + ', ' + text[pos:]
-            else:
-                text = text[:limit] + '\nrows = [[' + STYLE + ', "state_icon", "machine", "workspace", "tab"], ["agent"]]\n' + text[limit:]
+            text = text[:limit] + '\nrows = ' + default_rows + '\n' + text[limit:]
         else:
-            text += '\n[ui.sidebar.agents]\nrows = [[' + STYLE + ', "state_icon", "machine", "workspace", "tab"], ["agent"]]\n'
+            text += '\n[ui.sidebar.agents]\nrows = ' + default_rows + '\n'
     commands = data.get('keys', {}).get('command', [])
     is_marker = lambda c: c.get('type') == 'plugin_action' and c.get('command') == ACTION
     def has_key(value):

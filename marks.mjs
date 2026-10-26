@@ -4,6 +4,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const TOKEN = 'herdr_mark';
+// Filled dot: sits right after the hollow state icon, where Herdr draws a plain space.
+export const MARK = '●';
 
 function client(env, run) {
   if (env.HERDR_ENV !== '1') throw new Error('Run this command inside Herdr.');
@@ -34,7 +36,7 @@ export function toggle({ env = process.env, target, run } = {}) {
   if (!agent || agent.pane_id !== pane) throw new Error('The target no longer contains that agent.');
   const marked = Boolean(agent.tokens?.[TOKEN]);
   call(['pane', 'report-metadata', pane, '--source', 'plugin:herdr-marks',
-    ...(marked ? ['--clear-token', TOKEN] : ['--token', `${TOKEN}=▌`])]);
+    ...(marked ? ['--clear-token', TOKEN] : ['--token', `${TOKEN}=${MARK}`])]);
   return `${marked ? 'Unmarked' : 'Marked'} ${pane}`;
 }
 

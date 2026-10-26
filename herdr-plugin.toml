@@ -1,8 +1,8 @@
 id = "local.herdr-marks"
 name = "Herdr Marks"
-version = "0.2.3"
+version = "0.3.0"
 min_herdr_version = "0.9.3"
-description = "Mark agents as unread with a green sidebar marker that clears when viewed"
+description = "Mark agents as unread with a filled green dot beside the state icon that clears when viewed"
 platforms = ["macos", "linux"]
 
 [[actions]]

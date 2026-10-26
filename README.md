@@ -2,8 +2,9 @@
 
 ![Herdr sidebar showing an unread marker and the Control+B, then M shortcut](assets/mark-as-unread.png)
 
-Keep track of agents you want to revisit. Add a green `▌` to an agent's sidebar
-row, then have it clear automatically when you return to that terminal.
+Keep track of agents you want to revisit. Add a filled green `●` beside the
+hollow state icon in an agent's sidebar row, then have it clear automatically
+when you return to that terminal.
 
 The marker is display-only metadata. It does not change the agent's lifecycle
 status, completion badge, name, title, or notifications.
@@ -20,9 +21,11 @@ herdr plugin install sachin-philip/herdr-marks-as-unread
 herdr plugin action invoke local.herdr-marks.setup
 ```
 
-Setup backs up changed configuration, adds the green marker token to your
-existing sidebar rows, binds `prefix+m`, and reloads the config. It refuses to
-overwrite another command already using that shortcut. Check setup logs with:
+Setup backs up changed configuration, adds the green marker token right after
+`state_icon` in your existing first sidebar row, binds `prefix+m`, and reloads
+the config.
+It refuses to overwrite another command already using that shortcut. Check setup
+logs with:
 
 ```sh
 herdr plugin log list --plugin local.herdr-marks
@@ -57,17 +60,24 @@ There is no custom sidebar right-click handler.
   same pane inherits the mark until it is cleared.
 - Expanded sidebar rows are required. Status filters can still hide marked agents.
   Custom `rows_by_agent` layouts must also include the `$herdr_mark` token.
+- Herdr draws its ` · ` separator between most tokens and skips it only after
+  `state_icon`. Both are hard-coded in Herdr's sidebar renderer, which is why
+  the marker follows the state icon: it needs no separator before it, and no
+  layout setting can remove the one after it.
+- The marker fits on the first line only. Herdr indents every later line by two
+  extra columns, so a marker there would sit under the text, not under the bar.
 - The plugin records the latest focus result and last verified clear under its
   Herdr-provided state directory, in `last-focus.json` and `last-cleared.json`.
 
 ## Manual configuration
 
-Add the styled token before the first token in your existing agent row. For example:
+Add the styled token right after `state_icon` in your existing first agent row,
+or first if that row has no state icon. For example:
 
 ```toml
 [ui.sidebar.agents]
 rows = [
-  [{ token = "$herdr_mark", fg = "#9ece6a", bold = true, dim = false }, "state_text", "machine", "workspace", "tab"],
+  ["state_icon", { token = "$herdr_mark", fg = "#9ece6a", bold = true, dim = false }, "machine", "workspace", "tab"],
   ["agent"],
 ]
 
