@@ -2,8 +2,8 @@
 
 ![Herdr sidebar showing an unread marker and the Control+B, then M shortcut](assets/mark-as-unread.png)
 
-Keep track of agents you want to revisit. Add a green `unread` badge to the
-start of an agent's sidebar detail line, then have it clear automatically when
+Keep track of agents you want to revisit. Add a red `*` to the start of an
+agent's sidebar detail line, then have it clear automatically when
 you return to that terminal.
 
 The marker is display-only metadata. It does not change the agent's lifecycle
@@ -21,7 +21,7 @@ herdr plugin install sachin-philip/herdr-marks-as-unread
 herdr plugin action invoke local.herdr-marks.setup
 ```
 
-Setup backs up changed configuration, adds the green marker token to the start
+Setup backs up changed configuration, adds the red marker token to the start
 of your existing second sidebar row, binds `prefix+m`, and reloads the config.
 It refuses to overwrite another command already using that shortcut. Check setup
 logs with:
@@ -59,10 +59,10 @@ There is no custom sidebar right-click handler.
   same pane inherits the mark until it is cleared.
 - Expanded sidebar rows are required. Status filters can still hide marked agents.
   Custom `rows_by_agent` layouts must also include the `$herdr_mark` token.
-- Herdr always joins the badge to the next token with ` · `, so a marked agent
-  reads `unread · idle · claude`. The separator is hard-coded in Herdr's
+- Herdr always joins the marker to the next token with ` · `, so a marked agent
+  reads `* · idle · claude`. The separator is hard-coded in Herdr's
   sidebar renderer and no layout setting removes it.
-- The badge cannot replace the state word. Herdr's token rules only see their
+- The marker cannot replace the state word. Herdr's token rules only see their
   own token's value, so `state_text` cannot hide itself when a mark is set.
 - The plugin records the latest focus result and last verified clear under its
   Herdr-provided state directory, in `last-focus.json` and `last-cleared.json`.
@@ -76,7 +76,7 @@ or of the only row in a single-line layout. For example:
 [ui.sidebar.agents]
 rows = [
   ["state_icon", "machine", "workspace", "tab"],
-  [{ token = "$herdr_mark", fg = "#9ece6a", bold = true, dim = false }, "state_text", "agent"],
+  [{ token = "$herdr_mark", fg = "#f7768e", bold = true, dim = false }, "state_text", "agent"],
 ]
 
 [[keys.command]]

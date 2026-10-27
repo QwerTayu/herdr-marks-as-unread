@@ -4,8 +4,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const TOKEN = 'herdr_mark';
-// A word, not a glyph: it leads the dim second sidebar line as one more status fact.
-export const MARK = 'unread';
+// A red asterisk leading the dim second sidebar line.
+export const MARK = '*';
 
 function client(env, run) {
   if (env.HERDR_ENV !== '1') throw new Error('Run this command inside Herdr.');

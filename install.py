@@ -12,7 +12,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parent
 ACTION = 'local.herdr-marks.toggle'
-STYLE = '{ token = "$herdr_mark", fg = "#9ece6a", bold = true, dim = false }'
+STYLE = '{ token = "$herdr_mark", fg = "#f7768e", bold = true, dim = false }'
 
 
 def row_starts(text, start):
