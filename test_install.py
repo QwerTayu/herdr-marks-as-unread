@@ -1,6 +1,10 @@
+import contextlib
+import io
+from pathlib import Path
+import tempfile
 import unittest
 import tomllib
-from install import configure
+from install import configure, write_config
 
 MARK = '$herdr_mark'
 
@@ -76,6 +80,26 @@ class ConfigureTests(unittest.TestCase):
     def test_does_not_take_an_existing_shortcut(self):
         with self.assertRaisesRegex(ValueError, 'already bound'):
             configure('[[keys.command]]\nkey="prefix+m"\ncommand="other"\n')
+
+
+class WriteConfigTests(unittest.TestCase):
+    def test_writes_through_a_symlinked_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dotfiles = Path(tmp, 'dotfiles')
+            dotfiles.mkdir()
+            target = dotfiles / 'config.toml'
+            target.write_text('[theme]\nname="tokyo-night"\n')
+            link = Path(tmp, 'config.toml')
+            link.symlink_to(target)
+            with contextlib.redirect_stdout(io.StringIO()):
+                write_config(link, 'updated\n')
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(link.resolve(), target.resolve())
+            self.assertEqual(target.read_text(), 'updated\n')
+            backups = list(dotfiles.glob('config.toml.marks-backup-*'))
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_text(), '[theme]\nname="tokyo-night"\n')
+            self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ['config.toml', 'dotfiles'])
 
 
 if __name__ == '__main__':

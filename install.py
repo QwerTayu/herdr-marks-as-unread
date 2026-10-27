@@ -133,6 +133,21 @@ def configure(text):
     return text
 
 
+def write_config(config, text):
+    # Write through a symlinked config (e.g. kept in dotfiles) so the link survives.
+    config = config.resolve()
+    config.parent.mkdir(parents=True, exist_ok=True)
+    if config.exists():
+        backup = config.with_name(config.name + '.marks-backup-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
+        shutil.copy2(config, backup)
+        print(f'Config backup: {backup}')
+    with tempfile.NamedTemporaryFile(mode='w', dir=config.parent, delete=False) as f:
+        f.write(text)
+        temp = Path(f.name)
+    if config.exists(): shutil.copymode(config, temp)
+    temp.replace(config)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--configure-only', action='store_true',
@@ -149,16 +164,7 @@ def main():
     if not args.configure_only:
         subprocess.run([herdr, 'plugin', 'link', str(ROOT)], check=True)
     if after != before:
-        config.parent.mkdir(parents=True, exist_ok=True)
-        if config.exists():
-            backup = config.with_name(config.name + '.marks-backup-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
-            shutil.copy2(config, backup)
-            print(f'Config backup: {backup}')
-        with tempfile.NamedTemporaryFile(mode='w', dir=config.parent, delete=False) as f:
-            f.write(after)
-            temp = Path(f.name)
-        if config.exists(): shutil.copymode(config, temp)
-        temp.replace(config)
+        write_config(config, after)
     subprocess.run([herdr, 'server', 'reload-config'], check=True)
     subprocess.run([herdr, 'plugin', 'action', 'list', '--plugin', 'local.herdr-marks'], check=True)
     print('Installed. Focus an agent, press Ctrl+B, then M (or your configured prefix, then M).')
