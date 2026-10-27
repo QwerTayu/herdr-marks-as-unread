@@ -40,42 +40,15 @@ def row_starts(text, start):
         i += 1
 
 
-def row_items(text, start):
-    """Yield (begin, end) offsets of each top-level item in the array whose '[' precedes text[start]."""
-    depth = braces = 0
-    quote = None
-    i = begin = start
-    while i < len(text):
-        c = text[i]
-        if quote:
-            if c == '\\' and quote == '"': i += 1
-            elif c == quote: quote = None
-        elif c in '"\'': quote = c
-        elif c == '#':
-            i = text.find('\n', i)
-            if i == -1: return
-        elif c == '{': braces += 1
-        elif c == '}': braces -= 1
-        elif c == '[': depth += 1
-        elif c == ']' and depth > 0: depth -= 1
-        elif depth == 0 and braces == 0 and c in ',]':
-            if text[begin:i].strip(): yield begin, i
-            if c == ']': return
-            begin = i + 1
-        i += 1
-
-
 def configure(text):
     data = tomllib.loads(text)
     agents = data.get('ui', {}).get('sidebar', {}).get('agents', {})
     token = lambda item: item.get('token') if isinstance(item, dict) else item
     rows = agents.get('rows', [])
-    first = rows[0] if rows else []
-    # The marker goes on the first line only: Herdr indents later lines by two extra
-    # columns. It follows state_icon because Herdr joins that pair with a plain space
-    # instead of its usual " · ", so the filled dot sits beside the hollow state icon.
-    default_rows = '[["state_icon", ' + STYLE + ', "machine", "workspace", "tab"], ["agent"]]'
-    if 'rows' in agents and not any(token(item) == '$herdr_mark' for item in first):
+    # The badge leads the second (detail) line so the name line stays untouched; a
+    # single-line layout gets it first. Herdr always joins it to the next token with " · ".
+    default_rows = '[["state_icon", "machine", "workspace", "tab"], [' + STYLE + ', "agent"]]'
+    if 'rows' in agents and not any(token(item) == '$herdr_mark' for row in rows for item in row):
         # Insert directly in the existing TOML array, retaining styles and comments.
         section = re.search(r'(?m)^\[ui\.sidebar\.agents\][ \t]*(?:#.*)?$', text)
         body_start = section.end() if section else len(text)
@@ -83,17 +56,11 @@ def configure(text):
         limit = body_start + end.start() if end else len(text)
         match = re.search(r'(?m)^rows\s*=\s*\[', text[body_start:limit])
         starts = list(row_starts(text, body_start + match.end() - 1)) if match else []
-        items = list(row_items(text, starts[0])) if starts else []
-        if len(starts) != len(rows) or len(items) != len(first):
+        if len(starts) != len(rows) or not starts:
             raise ValueError('Unrecognized agent rows syntax; configure $herdr_mark manually.')
-        icons = [i for i, item in enumerate(first) if token(item) == 'state_icon']
-        if icons:
-            pos = items[icons[0]][1]
-            text = text[:pos] + ', ' + STYLE + text[pos:]
-        else:
-            pos = starts[0]
-            comma = '' if text[pos:].lstrip().startswith(']') else ', '
-            text = text[:pos] + STYLE + comma + text[pos:]
+        pos = starts[1] if len(starts) > 1 else starts[0]
+        comma = '' if text[pos:].lstrip().startswith(']') else ', '
+        text = text[:pos] + STYLE + comma + text[pos:]
     elif 'rows' not in agents:
         section = re.search(r'(?m)^\[ui\.sidebar\.agents\][ \t]*(?:#.*)?$', text)
         if section:
