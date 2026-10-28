@@ -23,6 +23,8 @@ herdr plugin action invoke local.herdr-marks.setup
 
 Setup backs up changed configuration, adds the red marker token to the start
 of your existing second sidebar row, binds `prefix+m`, and reloads the config.
+A marker left on another line by an earlier version is moved there, keeping
+its colours. Rerun the setup action after updating the plugin.
 It refuses to overwrite another command already using that shortcut. Check setup
 logs with:
 

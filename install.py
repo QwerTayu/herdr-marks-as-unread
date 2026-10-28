@@ -40,6 +40,44 @@ def row_starts(text, start):
         i += 1
 
 
+def row_items(text, start):
+    """Yield (begin, end) offsets of each top-level item in the array that opens just before text[start]."""
+    depth = braces = 0
+    quote = None
+    i = begin = start
+    while i < len(text):
+        c = text[i]
+        if quote:
+            if c == '\\' and quote == '"': i += 1
+            elif c == quote: quote = None
+        elif c in '"\'': quote = c
+        elif c == '#':
+            i = text.find('\n', i)
+            if i == -1: return
+        elif c == '{': braces += 1
+        elif c == '}': braces -= 1
+        elif c == '[': depth += 1
+        elif c == ']' and depth > 0: depth -= 1
+        elif depth == 0 and braces == 0 and c in ',]':
+            if text[begin:i].strip(): yield begin, i
+            if c == ']': return
+            begin = i + 1
+        i += 1
+
+
+def marker_style(rows):
+    """Reuse an existing marker's style so a migrated marker keeps the user's colours."""
+    for row in rows:
+        for item in row:
+            if isinstance(item, dict) and item.get('token') == '$herdr_mark':
+                fields = ['token = "$herdr_mark"']
+                if isinstance(item.get('fg'), str): fields.append(f'fg = "{item["fg"]}"')
+                for key in ('bold', 'dim'):
+                    if isinstance(item.get(key), bool): fields.append(f'{key} = {str(item[key]).lower()}')
+                return '{ ' + ', '.join(fields) + ' }'
+    return STYLE
+
+
 def configure(text):
     data = tomllib.loads(text)
     agents = data.get('ui', {}).get('sidebar', {}).get('agents', {})
@@ -47,20 +85,30 @@ def configure(text):
     rows = agents.get('rows', [])
     # The badge leads the second (detail) line so the name line stays untouched; a
     # single-line layout gets it first. Herdr always joins it to the next token with " · ".
+    target = 1 if len(rows) > 1 else 0
+    placed = [(r, i) for r, row in enumerate(rows) for i, item in enumerate(row) if token(item) == '$herdr_mark']
     default_rows = '[["state_icon", "machine", "workspace", "tab"], [' + STYLE + ', "agent"]]'
-    if 'rows' in agents and not any(token(item) == '$herdr_mark' for row in rows for item in row):
-        # Insert directly in the existing TOML array, retaining styles and comments.
+    if 'rows' in agents and rows and placed != [(target, 0)]:
+        # Edit the existing TOML array in place, retaining styles and comments. Markers
+        # left by earlier versions on other lines move to the detail line.
         section = re.search(r'(?m)^\[ui\.sidebar\.agents\][ \t]*(?:#.*)?$', text)
         body_start = section.end() if section else len(text)
         end = re.search(r'(?m)^\[', text[body_start:])
         limit = body_start + end.start() if end else len(text)
         match = re.search(r'(?m)^rows\s*=\s*\[', text[body_start:limit])
         starts = list(row_starts(text, body_start + match.end() - 1)) if match else []
-        if len(starts) != len(rows) or not starts:
+        items = [list(row_items(text, start)) for start in starts]
+        if [len(row) for row in items] != [len(row) for row in rows]:
             raise ValueError('Unrecognized agent rows syntax; configure $herdr_mark manually.')
-        pos = starts[1] if len(starts) > 1 else starts[0]
+        style = marker_style(rows)
+        for r, i in reversed(placed):
+            begin, end = items[r][i]
+            if i + 1 < len(rows[r]): end = items[r][i + 1][0]      # take the following comma and space
+            elif i > 0: begin = items[r][i - 1][1]                   # last item: take the preceding comma
+            text = text[:begin] + text[end:]
+        pos = list(row_starts(text, body_start + match.end() - 1))[target]
         comma = '' if text[pos:].lstrip().startswith(']') else ', '
-        text = text[:pos] + STYLE + comma + text[pos:]
+        text = text[:pos] + style + comma + text[pos:]
     elif 'rows' not in agents:
         section = re.search(r'(?m)^\[ui\.sidebar\.agents\][ \t]*(?:#.*)?$', text)
         if section:

@@ -60,6 +60,25 @@ class ConfigureTests(unittest.TestCase):
         rows = rows_of(configure('[ui.sidebar.agents]\nrows = [["workspace"], []]\n'))
         self.assertEqual(rows[1][0]['token'], MARK)
 
+    def test_moves_a_first_line_marker_from_an_older_install_to_the_detail_line(self):
+        source = ('[ui.sidebar.agents]\nrows = [\n'
+                  '  [{ token = "$herdr_mark", fg = "#9ece6a", bold = true, dim = false }, "state_icon", # name\n'
+                  '   { token = "workspace", bold = true }],\n'
+                  '  [{ token = "state_text", rules = [{ equals = "a, b", fg = "#fff" }] }, "agent"],\n'
+                  ']\n')
+        text = configure(source)
+        rows = rows_of(text)
+        self.assertEqual(rows[0], ['state_icon', {'token': 'workspace', 'bold': True}])
+        self.assertEqual(rows[1][0], {'token': MARK, 'fg': '#9ece6a', 'bold': True, 'dim': False})
+        self.assertEqual(rows[1][1:], [{'token': 'state_text', 'rules': [{'equals': 'a, b', 'fg': '#fff'}]}, 'agent'])
+        self.assertIn('# name', text)
+        self.assertEqual(configure(text), text)
+        trailing = '[ui.sidebar.agents]\nrows = [["state_icon", "workspace", "$herdr_mark"], ["agent"], ["$herdr_mark"]]\n'
+        rows = rows_of(configure(trailing))
+        style = {'token': MARK, 'fg': '#f7768e', 'bold': True, 'dim': False}
+        self.assertEqual(rows, [['state_icon', 'workspace'], [style, 'agent'], []])
+        self.assertEqual(rows_of(configure('[ui.sidebar.agents]\nrows = [["$herdr_mark", "workspace"]]\n'))[0][0], '$herdr_mark')
+
     def test_rejects_rows_it_cannot_safely_rewrite(self):
         with self.assertRaisesRegex(ValueError, 'manually'):
             configure('[ui.sidebar]\nagents.rows = [["agent"]]\n')
