@@ -4,8 +4,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const TOKEN = 'herdr_mark';
-// Filled dot: sits right after the hollow state icon, where Herdr draws a plain space.
-export const MARK = '●';
+// A red "unread" word leading the dim second sidebar line.
+export const MARK = 'unread';
 
 function client(env, run) {
   if (env.HERDR_ENV !== '1') throw new Error('Run this command inside Herdr.');
